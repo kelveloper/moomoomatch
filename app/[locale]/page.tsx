@@ -42,11 +42,17 @@ export default function HomePage() {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  useEffect(() => {
+    setIsClient(true)
+    scrollToBottom()
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
@@ -215,7 +221,7 @@ export default function HomePage() {
                   )}
 
                   <div className="mt-1 text-xs text-gray-500">
-                    {message.timestamp.toLocaleTimeString()}
+                    {isClient ? message.timestamp.toLocaleTimeString() : ""}
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 
 interface Business {
   vendor_formal_name: string
@@ -24,36 +25,69 @@ export async function POST(request: NextRequest) {
     const businessData = await businessResponse.json()
     const businesses: Business[] = businessData.businesses || []
 
-    // Generate AI response
+    // Generate AI response using Google Gemini
     let aiResponse = ""
+
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+    if (!apiKey) {
+      throw new Error("Google Gemini API key not configured")
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     if (businesses.length > 0) {
       const businessCount = businesses.length
       const topBusinesses = businesses.slice(0, 3)
 
-      // Extract key info for AI response
-      const businessSummary = topBusinesses
+      // Create detailed business context for AI
+      const businessDetails = topBusinesses
         .map(
-          b =>
-            `${b.vendor_dba || b.vendor_formal_name} (${b.naics_title}) in ${b.city}`
+          b => `
+- ${b.vendor_dba || b.vendor_formal_name}
+  Type: ${b.naics_title}
+  Location: ${b.address1}, ${b.city}
+  Borough: ${b.borough || "N/A"}
+  Description: ${b.business_description || "No description available"}
+  Phone: ${b.telephone || "N/A"}
+  Website: ${b.website || "N/A"}`
         )
-        .join(", ")
+        .join("\n")
 
-      aiResponse = `Great! I found ${businessCount} businesses matching your search. Here are some top matches:
+      const prompt = `You are MooMooMatch, an AI assistant helping Pursuit builders connect with NYC small businesses to create meaningful MVPs and tech solutions.
 
-${businessSummary}
+User searched for: "${message}"
 
-These businesses could be perfect opportunities for Pursuit builders to create MVPs and solve real problems. Each business has unique challenges that could benefit from tech solutions.
+I found ${businessCount} businesses. Here are the top 3:
+${businessDetails}
 
-Would you like me to search for a different type of business or location?`
+Please provide a helpful, enthusiastic response that:
+1. Acknowledges the search results
+2. Highlights interesting opportunities for tech builders
+3. Suggests potential MVP ideas or problems these businesses might face
+4. Maintains an encouraging, builder-focused tone
+5. Asks if they want to explore more businesses or different search criteria
+
+Keep it conversational and under 150 words.`
+
+      const result = await model.generateContent(prompt)
+      aiResponse = result.response.text()
     } else {
-      aiResponse = `I couldn't find any businesses matching "${message}". Try searching for:
+      const prompt = `You are MooMooMatch, an AI assistant helping Pursuit builders find NYC small businesses.
 
-• Different business types (restaurants, retail, consulting, etc.)
-• Specific NYC boroughs (Manhattan, Brooklyn, Queens, Bronx, Staten Island)
-• Industry terms (accounting, construction, beauty, tech)
+The user searched for: "${message}" but I couldn't find any matching businesses.
 
-For example: "Find accounting firms in Manhattan" or "Show me restaurants in Brooklyn"`
+Please provide a helpful response that:
+1. Acknowledges no results were found
+2. Suggests alternative search terms or approaches
+3. Gives specific examples of successful searches
+4. Maintains an encouraging, supportive tone
+5. Focuses on helping builders find opportunities
+
+Keep it conversational and under 100 words.`
+
+      const result = await model.generateContent(prompt)
+      aiResponse = result.response.text()
     }
 
     return NextResponse.json({
@@ -64,7 +98,8 @@ For example: "Find accounting firms in Manhattan" or "Show me restaurants in Bro
     console.error("Chat error:", error)
     return NextResponse.json(
       {
-        content: "Sorry, I'm having trouble right now. Please try again!",
+        content:
+          "Sorry, I'm having trouble connecting to my AI brain right now. Please try again!",
         businesses: []
       },
       { status: 500 }

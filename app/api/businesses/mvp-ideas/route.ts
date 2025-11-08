@@ -77,16 +77,16 @@ ${businessContext}
 
 Provide a business analysis in this exact format:
 
-**Business Summary:**
+Business Summary:
 [Write 2-3 sentences summarizing this business based ONLY on the data provided above. Focus on what they do, their industry, and key characteristics.]
 
-**Potential Problems:**
+Potential Problems:
 
-**Problem 1:** [2-3 sentences describing a specific operational challenge this type of business likely faces]
+Problem 1: [2-3 sentences describing a specific operational challenge this type of business likely faces]
 
-**Problem 2:** [2-3 sentences describing a different business challenge they might encounter]
+Problem 2: [2-3 sentences describing a different business challenge they might encounter]
 
-**Problem 3:** [2-3 sentences describing another potential problem area]
+Problem 3: [2-3 sentences describing another potential problem area]
 
 Keep it concise and realistic. Base problems on the business type and industry, not on solutions.`
 

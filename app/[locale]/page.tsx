@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { IconRobot, IconUser } from "@tabler/icons-react"
+import { IconRobot, IconUser, IconMapPin, IconBuilding, IconSend } from "@tabler/icons-react"
 import { SimpleWelcome } from "@/components/chat/simple-welcome"
 import { SimpleBusinessCard } from "@/components/chat/simple-business-card"
 import { SimpleHeader } from "@/components/ui/simple-header"
@@ -28,11 +28,17 @@ interface Message {
   timestamp: Date
 }
 
+interface BusinessAnalysis {
+  business: string
+  fullBusinessData: any
+  analysis: string
+}
+
 export default function HomePage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      role: "assistant",
+      role: "assistant", 
       content:
         "Hi! I'm MooMooMatch, your AI assistant for connecting Pursuit builders with NYC small businesses. Ask me to find businesses like 'Italian restaurants in Brooklyn' or 'accounting firms in Manhattan' and I'll help you discover great opportunities!",
       timestamp: new Date()
@@ -41,6 +47,9 @@ export default function HomePage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [businessAnalysis, setBusinessAnalysis] =
+    useState<BusinessAnalysis | null>(null)
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -124,6 +133,28 @@ export default function HomePage() {
     setTimeout(() => {
       sendMessage()
     }, 100)
+  }
+
+  const handleBusinessClick = async (business: Business) => {
+    setLoadingAnalysis(true)
+    setBusinessAnalysis(null)
+
+    try {
+      const response = await fetch("/api/businesses/mvp-ideas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ business })
+      })
+
+      const data = await response.json()
+      setBusinessAnalysis(data)
+    } catch (error) {
+      console.error("Failed to get business analysis:", error)
+    } finally {
+      setLoadingAnalysis(false)
+    }
   }
 
   const showWelcome = messages.length <= 1 && !loading
@@ -242,6 +273,7 @@ export default function HomePage() {
         )}
       </div>
 
+<<<<<<< HEAD
       {/* Modern Input */}
       <div className="bg-background/80 border-t p-4 backdrop-blur-md">
         <SimpleChatInput
@@ -256,6 +288,80 @@ export default function HomePage() {
           onVoiceClick={() => console.log("Voice clicked")}
           onPromptsClick={() => console.log("Prompts clicked")}
         />
+=======
+      {/* Business Analysis Panel */}
+      {(businessAnalysis || loadingAnalysis) && (
+        <div className="border-t border-gray-200 bg-blue-50 p-4">
+          <div className="mx-auto max-w-4xl">
+            {loadingAnalysis ? (
+              <div className="flex items-center justify-center">
+                <div className="flex space-x-1">
+                  <div className="size-2 animate-bounce rounded-full bg-blue-400"></div>
+                  <div
+                    className="size-2 animate-bounce rounded-full bg-blue-400"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="size-2 animate-bounce rounded-full bg-blue-400"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+                <span className="ml-3 text-blue-700">
+                  Analyzing business...
+                </span>
+              </div>
+            ) : businessAnalysis ? (
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    Business Analysis: {businessAnalysis.business}
+                  </h3>
+                  <button
+                    onClick={() => setBusinessAnalysis(null)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                  <div className="whitespace-pre-wrap text-sm text-gray-800">
+                    {businessAnalysis.analysis}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="border-t border-gray-200 bg-white px-4 py-3">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex space-x-2">
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me to find NYC businesses... (e.g., 'Find Italian restaurants in Brooklyn')"
+              className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={1}
+              disabled={loading}
+              autoComplete="off"
+              spellCheck="false"
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
+            />
+            <button
+              onClick={sendMessage}
+              disabled={loading || !input.trim()}
+              className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+            >
+              <IconSend size={20} />
+            </button>
+          </div>
+        </div>
+>>>>>>> 004e5539b91d478866be49664648e67a03890bc0
       </div>
     </div>
   )

@@ -60,21 +60,17 @@ export async function POST(request: NextRequest) {
         )
         .join("\n")
 
-      const prompt = `You are MooMooMatch, an AI assistant helping Pursuit builders connect with NYC small businesses to create meaningful MVPs and tech solutions.
+      const prompt = `You are MooMooMatch, helping Pursuit builders find NYC businesses for tech solutions.
 
-User searched for: "${message}"
-
-I found ${businessCount} highly relevant businesses that closely match the search criteria. Here are the top matches:
+Found ${businessCount} matches for "${message}":
 ${businessDetails}
 
-Please provide a focused, enthusiastic response that:
-1. Acknowledges the quality matches found
-2. Highlights specific opportunities for tech builders based on their business types
-3. Suggests potential MVP ideas or problems these specific businesses might face
-4. Maintains an encouraging, builder-focused tone
-5. Asks if they want to explore these businesses further or refine their search
+Give a concise response (under 80 words) that:
+- Confirms the matches found
+- Mentions they're clickable for MVP ideas
+- Asks if they want to search for something else
 
-Keep it conversational and under 150 words. Focus on quality over quantity.`
+Be direct and builder-focused.`
 
       const result = await model.generateContent(prompt)
       aiResponse = result.response.text()
@@ -90,35 +86,30 @@ Keep it conversational and under 150 words. Focus on quality over quantity.`
         )
         .join("\n")
 
-      const prompt = `You are MooMooMatch, an AI assistant helping Pursuit builders find NYC small businesses.
+      const prompt = `You are MooMooMatch, helping Pursuit builders find NYC businesses.
 
-The user searched for: "${message}" but I couldn't find exact matches. However, I found some related businesses that might interest them:
+No exact matches for "${message}", but found related options:
 ${suggestionDetails}
 
-Please provide a helpful response that:
-1. Acknowledges no exact matches were found
-2. Presents the closest alternatives I found
-3. Suggests how to refine their search for better results
-4. Maintains an encouraging, supportive tone
-5. Offers specific examples of successful search terms
+Give a concise response (under 60 words) that:
+- Says no exact matches found
+- Shows the alternatives
+- Suggests trying "restaurants in Queens" or "tech companies in Brooklyn"
 
-Keep it conversational and under 120 words. Be honest about the lack of exact matches but helpful with alternatives.`
+Be direct and helpful.`
 
       const result = await model.generateContent(prompt)
       aiResponse = result.response.text()
     } else {
-      const prompt = `You are MooMooMatch, an AI assistant helping Pursuit builders find NYC small businesses.
+      const prompt = `You are MooMooMatch, helping Pursuit builders find NYC businesses.
 
-The user searched for: "${message}" but I couldn't find any matching businesses in our database of 11,328 NYC small businesses.
+No matches found for "${message}" in our 11,328 SBS-certified businesses.
 
-Please provide a helpful response that:
-1. Acknowledges no matches were found
-2. Suggests alternative search approaches (try different industry terms, broader categories, or specific NYC boroughs)
-3. Gives 3-4 specific examples of successful searches like "restaurants in Brooklyn", "accounting firms in Manhattan", "construction companies in Queens"
-4. Maintains an encouraging, supportive tone
-5. Reminds them our database focuses on SBS-certified small businesses
+Give a concise response (under 50 words) that:
+- Says no matches found
+- Suggests trying: "restaurants in Queens", "tech companies in Brooklyn", "accounting firms in Manhattan"
 
-Keep it conversational and under 100 words.`
+Be direct and helpful.`
 
       const result = await model.generateContent(prompt)
       aiResponse = result.response.text()

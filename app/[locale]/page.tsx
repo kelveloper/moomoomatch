@@ -30,6 +30,11 @@ interface Message {
   timestamp: Date
 }
 
+interface MVPIdeas {
+  business: string
+  mvpIdeas: string
+}
+
 export default function HomePage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -43,6 +48,8 @@ export default function HomePage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [mvpIdeas, setMvpIdeas] = useState<MVPIdeas | null>(null)
+  const [loadingMvp, setLoadingMvp] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -118,6 +125,28 @@ export default function HomePage() {
     }
   }
 
+  const handleBusinessClick = async (business: Business) => {
+    setLoadingMvp(true)
+    setMvpIdeas(null)
+
+    try {
+      const response = await fetch("/api/businesses/mvp-ideas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ business })
+      })
+
+      const data = await response.json()
+      setMvpIdeas(data)
+    } catch (error) {
+      console.error("Failed to get MVP ideas:", error)
+    } finally {
+      setLoadingMvp(false)
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col bg-gray-50">
       {/* Header */}
@@ -173,7 +202,8 @@ export default function HomePage() {
                       {message.businesses.slice(0, 6).map((business, index) => (
                         <div
                           key={index}
-                          className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                          onClick={() => handleBusinessClick(business)}
+                          className="cursor-pointer rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
                         >
                           <div className="mb-2 font-semibold text-blue-700">
                             {business.vendor_dba || business.vendor_formal_name}
@@ -211,10 +241,15 @@ export default function HomePage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline"
+                                onClick={e => e.stopPropagation()}
                               >
                                 Website
                               </a>
                             )}
+                          </div>
+
+                          <div className="mt-2 text-xs italic text-gray-500">
+                            Click for MVP ideas →
                           </div>
                         </div>
                       ))}
@@ -257,6 +292,51 @@ export default function HomePage() {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* MVP Ideas Panel */}
+      {(mvpIdeas || loadingMvp) && (
+        <div className="border-t border-gray-200 bg-blue-50 p-4">
+          <div className="mx-auto max-w-4xl">
+            {loadingMvp ? (
+              <div className="flex items-center justify-center">
+                <div className="flex space-x-1">
+                  <div className="size-2 animate-bounce rounded-full bg-blue-400"></div>
+                  <div
+                    className="size-2 animate-bounce rounded-full bg-blue-400"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="size-2 animate-bounce rounded-full bg-blue-400"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+                <span className="ml-3 text-blue-700">
+                  Generating MVP ideas...
+                </span>
+              </div>
+            ) : mvpIdeas ? (
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    MVP Ideas for {mvpIdeas.business}
+                  </h3>
+                  <button
+                    onClick={() => setMvpIdeas(null)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                  <div className="whitespace-pre-wrap text-sm text-gray-800">
+                    {mvpIdeas.mvpIdeas}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="border-t border-gray-200 bg-white px-4 py-3">

@@ -230,7 +230,7 @@ export default function HomePage() {
                                   console.log("Saved:", bus)
                                 }
                                 onViewDetails={(bus: Business) =>
-                                  console.log("View details:", bus)
+                                  handleBusinessClick(bus)
                                 }
                                 onShare={(bus: Business) =>
                                   console.log("Share:", bus)

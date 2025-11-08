@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
     const suggestions = businessData.suggestions || []
 
     if (hasExactMatches && businesses.length > 0) {
-      const businessCount = businesses.length
-      const topBusinesses = businesses.slice(0, Math.min(3, businesses.length))
+      const displayCount = Math.min(6, businesses.length)
+      const topBusinesses = businesses.slice(0, displayCount)
 
       // Create detailed business context for AI
       const businessDetails = topBusinesses
         .map(
-          b => `
+          (b: Business) => `
 - ${b.vendor_dba || b.vendor_formal_name}
   Type: ${b.naics_title}
   Sector: ${b.naics_sector}
@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
 
       const prompt = `You are MooMooMatch, helping Pursuit builders find NYC businesses for tech solutions.
 
-Found ${businessCount} matches for "${message}":
+Found ${displayCount} matches for "${message}":
 ${businessDetails}
 
 Give a concise response (under 80 words) that:
-- Confirms the matches found
-- Mentions they're clickable for MVP ideas
+- Confirms the ${displayCount} matches found
+- Mentions they're clickable for business analysis
 - Asks if they want to search for something else
 
 Be direct and builder-focused.`
@@ -75,10 +75,11 @@ Be direct and builder-focused.`
       const result = await model.generateContent(prompt)
       aiResponse = result.response.text()
     } else if (suggestions.length > 0) {
+      const displayCount = Math.min(6, suggestions.length)
       const suggestionDetails = suggestions
-        .slice(0, 3)
+        .slice(0, displayCount)
         .map(
-          b => `
+          (b: Business) => `
 - ${b.vendor_dba || b.vendor_formal_name}
   Type: ${b.naics_title}
   Sector: ${b.naics_sector}
@@ -88,12 +89,11 @@ Be direct and builder-focused.`
 
       const prompt = `You are MooMooMatch, helping Pursuit builders find NYC businesses.
 
-No exact matches for "${message}", but found related options:
+No exact matches for "${message}", but found ${displayCount} related options:
 ${suggestionDetails}
 
 Give a concise response (under 60 words) that:
-- Says no exact matches found
-- Shows the alternatives
+- Says no exact matches found but shows ${displayCount} alternatives
 - Suggests trying "restaurants in Queens" or "tech companies in Brooklyn"
 
 Be direct and helpful.`

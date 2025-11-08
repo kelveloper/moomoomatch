@@ -110,9 +110,10 @@ export default function HomePage() {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && !loading && input.trim()) {
       e.preventDefault()
+      e.stopPropagation()
       sendMessage()
     }
   }
@@ -264,11 +265,16 @@ export default function HomePage() {
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Ask me to find NYC businesses... (e.g., 'Find Italian restaurants in Brooklyn')"
               className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={1}
               disabled={loading}
+              autoComplete="off"
+              spellCheck="false"
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
             />
             <button
               onClick={sendMessage}

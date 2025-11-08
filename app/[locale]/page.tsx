@@ -30,9 +30,10 @@ interface Message {
   timestamp: Date
 }
 
-interface MVPIdeas {
+interface BusinessAnalysis {
   business: string
-  mvpIdeas: string
+  fullBusinessData: any
+  analysis: string
 }
 
 export default function HomePage() {
@@ -48,8 +49,9 @@ export default function HomePage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [isClient, setIsClient] = useState(false)
-  const [mvpIdeas, setMvpIdeas] = useState<MVPIdeas | null>(null)
-  const [loadingMvp, setLoadingMvp] = useState(false)
+  const [businessAnalysis, setBusinessAnalysis] =
+    useState<BusinessAnalysis | null>(null)
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -126,8 +128,8 @@ export default function HomePage() {
   }
 
   const handleBusinessClick = async (business: Business) => {
-    setLoadingMvp(true)
-    setMvpIdeas(null)
+    setLoadingAnalysis(true)
+    setBusinessAnalysis(null)
 
     try {
       const response = await fetch("/api/businesses/mvp-ideas", {
@@ -139,11 +141,11 @@ export default function HomePage() {
       })
 
       const data = await response.json()
-      setMvpIdeas(data)
+      setBusinessAnalysis(data)
     } catch (error) {
-      console.error("Failed to get MVP ideas:", error)
+      console.error("Failed to get business analysis:", error)
     } finally {
-      setLoadingMvp(false)
+      setLoadingAnalysis(false)
     }
   }
 
@@ -249,7 +251,7 @@ export default function HomePage() {
                           </div>
 
                           <div className="mt-2 text-xs italic text-gray-500">
-                            Click for MVP ideas →
+                            Click for business analysis →
                           </div>
                         </div>
                       ))}
@@ -293,11 +295,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* MVP Ideas Panel */}
-      {(mvpIdeas || loadingMvp) && (
+      {/* Business Analysis Panel */}
+      {(businessAnalysis || loadingAnalysis) && (
         <div className="border-t border-gray-200 bg-blue-50 p-4">
           <div className="mx-auto max-w-4xl">
-            {loadingMvp ? (
+            {loadingAnalysis ? (
               <div className="flex items-center justify-center">
                 <div className="flex space-x-1">
                   <div className="size-2 animate-bounce rounded-full bg-blue-400"></div>
@@ -311,17 +313,17 @@ export default function HomePage() {
                   ></div>
                 </div>
                 <span className="ml-3 text-blue-700">
-                  Generating MVP ideas...
+                  Analyzing business...
                 </span>
               </div>
-            ) : mvpIdeas ? (
+            ) : businessAnalysis ? (
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-blue-800">
-                    MVP Ideas for {mvpIdeas.business}
+                    Business Analysis: {businessAnalysis.business}
                   </h3>
                   <button
-                    onClick={() => setMvpIdeas(null)}
+                    onClick={() => setBusinessAnalysis(null)}
                     className="text-blue-600 hover:text-blue-800"
                   >
                     ✕
@@ -329,7 +331,7 @@ export default function HomePage() {
                 </div>
                 <div className="rounded-lg bg-white p-4 shadow-sm">
                   <div className="whitespace-pre-wrap text-sm text-gray-800">
-                    {mvpIdeas.mvpIdeas}
+                    {businessAnalysis.analysis}
                   </div>
                 </div>
               </div>

@@ -28,26 +28,40 @@ export async function GET(request: NextRequest) {
     // Parse the natural language query
     const { industry, borough, searchTerms } = parseQuery(query)
 
-    // Build the API query
-    let apiUrl =
-      "https://data.cityofnewyork.us/resource/ci93-uc8s.json?$limit=100"
+    // Build strict search conditions focusing on key columns
+    let whereConditions: string[] = []
 
-    // Add filters based on parsed query
+    // Borough filter (exact match)
     if (borough) {
-      apiUrl += `&borough=${encodeURIComponent(borough.toUpperCase())}`
+      whereConditions.push(`upper(borough) = '${borough.toUpperCase()}'`)
     }
 
+    // Industry/business type filter (strict matching on key columns)
     if (industry) {
-      const whereClause = `upper(naics_title) like upper('%${industry}%') OR upper(naics_sector) like upper('%${industry}%')`
+      const industryConditions = [
+        `upper(naics_sector) like upper('%${industry}%')`,
+        `upper(naics_subsector) like upper('%${industry}%')`,
+        `upper(naics_title) like upper('%${industry}%')`,
+        `upper(business_description) like upper('%${industry}%')`
+      ]
+      whereConditions.push(`(${industryConditions.join(" OR ")})`)
+    }
+
+    // Additional search terms (strict matching)
+    if (searchTerms.length > 0) {
+      const termConditions = searchTerms.map(term => {
+        return `(upper(naics_sector) like upper('%${term}%') OR upper(naics_subsector) like upper('%${term}%') OR upper(naics_title) like upper('%${term}%') OR upper(business_description) like upper('%${term}%'))`
+      })
+      whereConditions.push(`(${termConditions.join(" OR ")})`)
+    }
+
+    // Build the API query with strict filtering
+    let apiUrl =
+      "https://data.cityofnewyork.us/resource/ci93-uc8s.json?$limit=50"
+
+    if (whereConditions.length > 0) {
+      const whereClause = whereConditions.join(" AND ")
       apiUrl += `&$where=${encodeURIComponent(whereClause)}`
-    } else if (searchTerms.length > 0) {
-      const searchConditions = searchTerms
-        .map(
-          term =>
-            `upper(vendor_formal_name) like upper('%${term}%') OR upper(vendor_dba) like upper('%${term}%') OR upper(naics_title) like upper('%${term}%')`
-        )
-        .join(" OR ")
-      apiUrl += `&$where=${encodeURIComponent(searchConditions)}`
     }
 
     console.log("API URL:", apiUrl)
@@ -60,15 +74,37 @@ export async function GET(request: NextRequest) {
 
     const businesses: Business[] = await response.json()
 
-    // Filter and rank results
-    const filteredBusinesses = businesses
+    // Strict filtering and relevance scoring
+    const scoredBusinesses = businesses
       .filter(business => business.vendor_formal_name && business.address1)
-      .slice(0, 50) // Limit to 50 results for performance
+      .map(business => ({
+        ...business,
+        relevanceScore: calculateRelevanceScore(
+          business,
+          query,
+          industry,
+          searchTerms
+        )
+      }))
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+
+    // Only return highly relevant results (score > 0.3) or top 10 max
+    const relevantBusinesses = scoredBusinesses
+      .filter(business => business.relevanceScore > 0.3)
+      .slice(0, 10)
+
+    // If no highly relevant results, try a broader search for suggestions
+    let suggestions: Business[] = []
+    if (relevantBusinesses.length === 0) {
+      suggestions = await findClosestMatches(industry, borough, searchTerms)
+    }
 
     return NextResponse.json({
-      businesses: filteredBusinesses,
-      count: filteredBusinesses.length,
-      query: query
+      businesses: relevantBusinesses,
+      suggestions: suggestions,
+      count: relevantBusinesses.length,
+      query: query,
+      hasExactMatches: relevantBusinesses.length > 0
     })
   } catch (error) {
     console.error("Search error:", error)
@@ -76,6 +112,106 @@ export async function GET(request: NextRequest) {
       { error: "Failed to search businesses" },
       { status: 500 }
     )
+  }
+}
+
+// Calculate relevance score based on exact matches in key fields
+function calculateRelevanceScore(
+  business: Business,
+  query: string,
+  industry: string | null,
+  searchTerms: string[]
+): number {
+  let score = 0
+  const queryLower = query.toLowerCase()
+
+  // Exact matches in key fields get highest scores
+  if (
+    business.naics_title &&
+    business.naics_title.toLowerCase().includes(queryLower)
+  )
+    score += 1.0
+  if (
+    business.naics_sector &&
+    business.naics_sector.toLowerCase().includes(queryLower)
+  )
+    score += 0.8
+  if (
+    business.naics_subsector &&
+    business.naics_subsector.toLowerCase().includes(queryLower)
+  )
+    score += 0.7
+  if (
+    business.business_description &&
+    business.business_description.toLowerCase().includes(queryLower)
+  )
+    score += 0.6
+
+  // Industry-specific scoring
+  if (industry) {
+    const industryLower = industry.toLowerCase()
+    if (
+      business.naics_title &&
+      business.naics_title.toLowerCase().includes(industryLower)
+    )
+      score += 0.9
+    if (
+      business.naics_sector &&
+      business.naics_sector.toLowerCase().includes(industryLower)
+    )
+      score += 0.7
+    if (
+      business.business_description &&
+      business.business_description.toLowerCase().includes(industryLower)
+    )
+      score += 0.5
+  }
+
+  // Search terms scoring
+  searchTerms.forEach(term => {
+    const termLower = term.toLowerCase()
+    if (
+      business.naics_title &&
+      business.naics_title.toLowerCase().includes(termLower)
+    )
+      score += 0.4
+    if (
+      business.business_description &&
+      business.business_description.toLowerCase().includes(termLower)
+    )
+      score += 0.3
+  })
+
+  return score
+}
+
+// Find closest matches when no exact matches are found
+async function findClosestMatches(
+  industry: string | null,
+  borough: string | null,
+  searchTerms: string[]
+): Promise<Business[]> {
+  try {
+    let broadSearchUrl =
+      "https://data.cityofnewyork.us/resource/ci93-uc8s.json?$limit=20"
+
+    // Broader search for suggestions
+    if (industry) {
+      const broadIndustrySearch = `upper(naics_sector) like upper('%${industry.split(" ")[0]}%')`
+      broadSearchUrl += `&$where=${encodeURIComponent(broadIndustrySearch)}`
+    } else if (searchTerms.length > 0) {
+      const broadTermSearch = `upper(naics_title) like upper('%${searchTerms[0]}%')`
+      broadSearchUrl += `&$where=${encodeURIComponent(broadTermSearch)}`
+    }
+
+    const response = await fetch(broadSearchUrl)
+    if (!response.ok) return []
+
+    const suggestions: Business[] = await response.json()
+    return suggestions.slice(0, 5) // Max 5 suggestions
+  } catch (error) {
+    console.error("Error finding suggestions:", error)
+    return []
   }
 }
 

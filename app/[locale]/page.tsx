@@ -125,20 +125,59 @@ export default function HomePage() {
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !loading && input.trim()) {
-      e.preventDefault()
-      e.stopPropagation()
-      sendMessage()
-    }
-  }
+  const handleSuggestionClick = async (suggestion: string) => {
+    if (loading) return
 
-  const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion)
-    // Auto-send the suggestion
-    setTimeout(() => {
-      sendMessage()
-    }, 100)
+
+    // Create user message immediately
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: suggestion,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInput("")
+    setLoading(true)
+
+    try {
+      const response = await fetch("/api/chat/moomoomatch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: suggestion,
+          messages: messages
+        })
+      })
+
+      const data = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.content,
+        businesses: data.businesses,
+        timestamp: new Date()
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (error) {
+      console.error("Chat failed:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content:
+          "Sorry, I'm having trouble connecting right now. Please try again!",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleBusinessClick = async (business: Business) => {
@@ -330,7 +369,6 @@ export default function HomePage() {
           value={input}
           onChange={setInput}
           onSubmit={sendMessage}
-          onKeyDown={handleKeyDown}
           isLoading={loading}
           disabled={loading}
           placeholder="Ask me to find NYC businesses... (e.g., 'Find Italian restaurants in Brooklyn')"
